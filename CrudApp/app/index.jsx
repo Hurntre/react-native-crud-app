@@ -1,28 +1,58 @@
-import {
-  Text,
-  View,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  FlatList,
-} from "react-native";
+import { Text, View, TextInput, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { ThemeContext } from "@/context/ThemeContext";
 import { data } from "@/data/todos";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Inter_500Medium, useFonts } from "@expo-google-fonts/inter";
 import Octicons from "@expo/vector-icons/Octicons";
 import Animated, { LinearTransition } from "react-native-reanimated";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { StatusBar } from "expo-status-bar";
+import { useRouter } from "expo-router";
 
 export default function Index() {
-  const [todos, setTodos] = useState(data.sort((a, b) => b.id - a.id));
+  const [todos, setTodos] = useState([]);
   const [text, setText] = useState("");
   const { colorScheme, setColorScheme, theme } = useContext(ThemeContext);
+  const router = useRouter();
 
   const [loaded, error] = useFonts({
     Inter_500Medium,
   });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const jsonValue = await AsyncStorage.getItem("TodoApp");
+        const storageTodos = jsonValue != null ? JSON.parse(jsonValue) : null;
+
+        if (storageTodos && storageTodos.length > 0) {
+          setTodos(storageTodos.sort((a, b) => b.id - a.id));
+        } else {
+          // using the data that comes with the app if user has not started the app before
+          setTodos(data.sort((a, b) => b.id - a.id));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    const storeData = async () => {
+      try {
+        const jsonValue = JSON.stringify(todos);
+        await AsyncStorage.setItem("TodoApp", jsonValue);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    storeData();
+  }, [todos]);
 
   // if the fonts are not loaded and there is no error, return null
   if (!loaded && !error) {
@@ -51,15 +81,23 @@ export default function Index() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+  const handlePress = (id) => {
+    router.push(`/todos/${id}`);
+  };
+
   const renderItem = ({ item }) => {
     return (
       <View style={styles.todoItem}>
-        <Text
-          style={[styles.todoText, item.completed && styles.completedText]}
-          onPress={() => toggleTodo(item.id)}
+        <Pressable
+          onPress={() => handlePress(item.id)}
+          onLongPress={() => toggleTodo(item.id)}
         >
-          {item.title}
-        </Text>
+          <Text
+            style={[styles.todoText, item.completed && styles.completedText]}
+          >
+            {item.title}
+          </Text>
+        </Pressable>
         <Pressable onPress={() => removeTodo(item.id)}>
           <MaterialCommunityIcons
             name="delete-circle"
@@ -77,6 +115,7 @@ export default function Index() {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
+          maxLength={30}
           placeholder="Add a new todo"
           placeholderTextColor="gray"
           value={text}
@@ -91,23 +130,13 @@ export default function Index() {
           }
           style={styles.themeButton}
         >
-          {colorScheme === "dark" ? (
-            <Octicons
-              name="moon"
-              size={36}
-              color={theme.text}
-              selectable={undefined}
-              style={{ width: 36, height: 36 }}
-            />
-          ) : (
-            <Octicons
-              name="sun"
-              size={36}
-              color={theme.text}
-              selectable={undefined}
-              style={{ width: 36, height: 36 }}
-            />
-          )}
+          <Octicons
+            name={colorScheme === "dark" ? "moon" : "sun"}
+            size={36}
+            color={theme.text}
+            selectable={undefined}
+            style={{ width: 36, height: 36 }}
+          />
         </Pressable>
       </View>
       <Animated.FlatList
@@ -118,6 +147,7 @@ export default function Index() {
         itemLayoutAnimation={LinearTransition}
         keyboardDismissMode="on-drag"
       />
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
     </SafeAreaView>
   );
 }

@@ -9,11 +9,13 @@ import Octicons from "@expo/vector-icons/Octicons";
 import Animated, { LinearTransition } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
+import { useRouter } from "expo-router";
 
 export default function Index() {
   const [todos, setTodos] = useState([]);
   const [text, setText] = useState("");
   const { colorScheme, setColorScheme, theme } = useContext(ThemeContext);
+  const router = useRouter();
 
   const [loaded, error] = useFonts({
     Inter_500Medium,
@@ -34,10 +36,10 @@ export default function Index() {
       } catch (error) {
         console.error(error);
       }
-    }
+    };
 
     fetchData();
-  }, [])
+  }, []);
 
   useEffect(() => {
     const storeData = async () => {
@@ -47,7 +49,7 @@ export default function Index() {
       } catch (error) {
         console.error(error);
       }
-    }
+    };
 
     storeData();
   }, [todos]);
@@ -79,15 +81,23 @@ export default function Index() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+  const handlePress = (id) => {
+    router.push(`/todos/${id}`);
+  };
+
   const renderItem = ({ item }) => {
     return (
       <View style={styles.todoItem}>
-        <Text
-          style={[styles.todoText, item.completed && styles.completedText]}
-          onPress={() => toggleTodo(item.id)}
+        <Pressable
+          onPress={() => handlePress(item.id)}
+          onLongPress={() => toggleTodo(item.id)}
         >
-          {item.title}
-        </Text>
+          <Text
+            style={[styles.todoText, item.completed && styles.completedText]}
+          >
+            {item.title}
+          </Text>
+        </Pressable>
         <Pressable onPress={() => removeTodo(item.id)}>
           <MaterialCommunityIcons
             name="delete-circle"
@@ -105,6 +115,7 @@ export default function Index() {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
+          maxLength={30}
           placeholder="Add a new todo"
           placeholderTextColor="gray"
           value={text}
@@ -119,23 +130,13 @@ export default function Index() {
           }
           style={styles.themeButton}
         >
-          {colorScheme === "dark" ? (
-            <Octicons
-              name="moon"
-              size={36}
-              color={theme.text}
-              selectable={undefined}
-              style={{ width: 36, height: 36 }}
-            />
-          ) : (
-            <Octicons
-              name="sun"
-              size={36}
-              color={theme.text}
-              selectable={undefined}
-              style={{ width: 36, height: 36 }}
-            />
-          )}
+          <Octicons
+            name={colorScheme === "dark" ? "moon" : "sun"}
+            size={36}
+            color={theme.text}
+            selectable={undefined}
+            style={{ width: 36, height: 36 }}
+          />
         </Pressable>
       </View>
       <Animated.FlatList
